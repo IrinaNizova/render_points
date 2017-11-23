@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+</head>
+<body>
+{% if errors %}
+        <ul>
+            {% for error in errors %}
+            <li style="color:red;">{{ error }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+<form action="" method="get">
+    <input type="text" name="filename">
+    <input type="submit" value="load">
+</form>
+
+{% load staticfiles %}
+<img src="{% static 'tracking_points.png' %}" />
+</body>
+</html>

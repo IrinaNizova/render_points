@@ -1,6 +1,6 @@
-# -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 from zipfile import ZipFile, BadZipfile
+
 import mapnik
 import os, subprocess
 
@@ -20,6 +20,7 @@ def create_rule(expression, color):
 
 def create_map():
     map = mapnik.Map(800, 600)
+
     map.background = mapnik.Color('rgb(0,0,0,0)')
 
     style = mapnik.Style()
@@ -41,7 +42,6 @@ def create_map():
     return map
 
 def dump_sql(filepath):
-
     os.environ['PATH'] += r';C:\Program Files\PostgreSQL\10\bin'
     os.environ['PGHOST'] = DATABASES['default']['HOST']
     os.environ['PGPORT'] = DATABASES['default']['PORT']
@@ -59,7 +59,22 @@ def dump_sql(filepath):
 
     for shape_path in shapefile_list:
         cmds = 'shp2pgsql "' + shape_path + '" paints | psql '
-        return subprocess.call(cmds, shell=True)
+        code =  subprocess.call(cmds, shell=True)
+        if code:
+            return 'Can not create postgis table from files'
+
+
+def check_exist_file(filepath):
+    if not os.path.isfile(filepath):
+        return 'Can not find file on path %s' % filepath
+
+
+def unzip_file(filepath):
+    try:
+        z = ZipFile(filepath)
+        z.extractall(path=os.path.dirname(filepath))
+    except BadZipfile:
+        return 'File is not a valid zip file'
 
 
 def load_map(request):
@@ -67,19 +82,11 @@ def load_map(request):
     if 'filename' in request.GET:
         filename = request.GET['filename']
 
-        if os.path.isfile(filename):
-            try:
-                z = ZipFile(filename)
-                z.extractall(path=os.path.dirname(filename))
-                dump_error = dump_sql(os.path.dirname(filename))
-                if dump_error:
-                    errors.append('Can not create postgis table from files')
-                mapnik.render_to_file(create_map(), 'static/fromarchive/tracking_points.png', 'png')
-            except BadZipfile:
-                errors.append('File is not a zip file')
-
-        else:
-            errors.append('Can not find file on path %s' % filename)
+        exist_file_error = check_exist_file(filename)
+        unzip_error = unzip_file(filename)
+        dump_error = dump_sql(os.path.dirname(filename))
+        mapnik.render_to_file(create_map(), 'static/fromarchive/tracking_points.png', 'png')
+        errors = [e for e in (exist_file_error, unzip_error, dump_error) if e]
 
     return render(request, 'map.html', {'errors': errors})
 
